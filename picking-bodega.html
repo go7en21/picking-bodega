@@ -1,257 +1,343 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sistema de Picking - Bodega</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
-  .header { background: #1e293b; border-bottom: 2px solid #334155; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
-  .header h1 { font-size: 1.4rem; font-weight: 700; color: #f1f5f9; }
-  .header h1 span { color: #38bdf8; }
-  .header-actions { display: flex; gap: 10px; }
-  .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; }
-  .btn-primary { background: #0ea5e9; color: white; }
-  .btn-primary:hover { background: #0284c7; }
-  .btn-success { background: #22c55e; color: white; }
-  .btn-success:hover { background: #16a34a; }
-  .btn-warning { background: #f59e0b; color: white; }
-  .btn-warning:hover { background: #d97706; }
-  .btn-danger { background: #ef4444; color: white; }
-  .btn-danger:hover { background: #dc2626; }
-  .btn-ghost { background: #334155; color: #94a3b8; }
-  .btn-ghost:hover { background: #475569; color: #e2e8f0; }
-  .btn-sm { padding: 5px 10px; font-size: 0.78rem; }
-  .btn-xs { padding: 3px 7px; font-size: 0.72rem; }
-  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px 24px; }
-  .stat-card { background: #1e293b; border-radius: 12px; padding: 16px 20px; border: 1px solid #334155; }
-  .stat-card .label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
-  .stat-card .value { font-size: 1.8rem; font-weight: 700; }
-  .stat-card.total .value { color: #38bdf8; }
-  .stat-card.ocupadas .value { color: #22c55e; }
-  .stat-card.libres .value { color: #94a3b8; }
-  .stat-card.pct .value { color: #f59e0b; }
-  .toolbar { padding: 0 24px 16px; display: flex; gap: 12px; align-items: center; }
-  .search-input { flex: 1; background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 9px 14px; color: #e2e8f0; font-size: 0.9rem; outline: none; max-width: 400px; }
-  .search-input:focus { border-color: #0ea5e9; }
-  .search-input::placeholder { color: #475569; }
-  .filter-select { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 9px 12px; color: #e2e8f0; font-size: 0.85rem; outline: none; cursor: pointer; }
-  .filter-select:focus { border-color: #0ea5e9; }
-  .view-toggle { display: flex; background: #1e293b; border-radius: 8px; overflow: hidden; border: 1px solid #334155; }
-  .view-btn { padding: 8px 14px; border: none; background: transparent; color: #64748b; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
-  .view-btn.active { background: #0ea5e9; color: white; }
-  .content { padding: 0 24px 24px; }
-  .bodega-map { display: flex; flex-direction: column; gap: 6px; }
-  .pasillo-row { background: #1e293b; border-radius: 10px; border: 1px solid #334155; overflow: hidden; }
-  .pasillo-header { background: #0f172a; padding: 8px 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none; }
-  .pasillo-header:hover { background: #1a2540; }
-  .pasillo-label { font-size: 1rem; font-weight: 700; color: #38bdf8; min-width: 30px; }
-  .pasillo-info { font-size: 0.78rem; color: #64748b; }
-  .pasillo-progress { flex: 1; height: 6px; background: #334155; border-radius: 3px; overflow: hidden; max-width: 200px; }
-  .pasillo-progress-bar { height: 100%; background: #22c55e; border-radius: 3px; transition: width 0.3s; }
-  .pasillo-pct { font-size: 0.75rem; color: #64748b; min-width: 40px; text-align: right; }
-  .pasillo-toggle { color: #475569; font-size: 0.9rem; margin-left: 8px; }
-  .pasillo-grid { padding: 10px 14px 14px; display: none; flex-wrap: wrap; gap: 5px; }
-  .pasillo-grid.open { display: flex; }
-  .celda { width: 68px; height: 60px; border-radius: 7px; border: 1.5px solid #334155; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; position: relative; font-size: 0.65rem; text-align: center; padding: 3px; gap: 1px; }
-  .celda:hover { transform: scale(1.05); z-index: 2; }
-  .celda.libre { background: #0f172a; color: #475569; border-color: #334155; }
-  .celda.libre:hover { border-color: #0ea5e9; color: #38bdf8; background: #0c1e32; }
-  .celda.ocupada { background: #052e16; border-color: #166534; color: #4ade80; }
-  .celda.ocupada:hover { background: #14532d; border-color: #22c55e; }
-  .celda.multi { background: #0c1a38; border-color: #1d4ed8; }
-  .celda.multi:hover { background: #1e3a5f; border-color: #3b82f6; }
-  .celda .loc-code { font-size: 0.68rem; font-weight: 600; color: #64748b; }
-  .celda.ocupada .loc-code { color: #86efac; }
-  .celda.multi .loc-code { color: #93c5fd; }
-  .celda .prod-code { font-size: 0.62rem; font-weight: 700; color: #4ade80; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60px; }
-  .celda.multi .prod-code { color: #60a5fa; }
-  .celda .prod-qty { font-size: 0.58rem; color: #22c55e; }
-  .celda .plus-icon { font-size: 1.1rem; color: #334155; }
-  .celda.libre:hover .plus-icon { color: #0ea5e9; }
-  .multi-badge { font-size: 0.58rem; background: #1d4ed8; color: #bfdbfe; padding: 1px 5px; border-radius: 99px; font-weight: 700; }
-  .lista-table { width: 100%; border-collapse: collapse; background: #1e293b; border-radius: 12px; overflow: hidden; border: 1px solid #334155; }
-  .lista-table th { background: #0f172a; padding: 10px 14px; text-align: left; font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #334155; }
-  .lista-table td { padding: 9px 14px; font-size: 0.85rem; border-bottom: 1px solid #1e2d40; }
-  .lista-table tr:last-child td { border-bottom: none; }
-  .lista-table tr:hover td { background: #243044; }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 0.72rem; font-weight: 600; }
-  .badge-green { background: #052e16; color: #4ade80; }
-  .badge-blue { background: #0c1a38; color: #60a5fa; }
-  .badge-gray { background: #1e293b; color: #475569; border: 1px solid #334155; }
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 100; backdrop-filter: blur(3px); }
-  .modal-overlay.open { display: flex; }
-  .modal { background: #1e293b; border-radius: 16px; border: 1px solid #334155; width: 520px; max-width: 95vw; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; }
-  .modal-header { padding: 16px 22px; background: #0f172a; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #334155; flex-shrink: 0; }
-  .modal-header h2 { font-size: 1rem; font-weight: 700; color: #f1f5f9; }
-  .modal-loc { font-size: 0.85rem; color: #38bdf8; font-weight: 600; background: #0c2540; padding: 4px 10px; border-radius: 6px; }
-  .modal-body { padding: 18px 22px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; flex: 1; }
-  .form-group label { display: block; font-size: 0.78rem; color: #94a3b8; margin-bottom: 5px; font-weight: 600; }
-  .form-group input, .form-group select { width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 9px 12px; color: #e2e8f0; font-size: 0.9rem; outline: none; transition: border 0.2s; }
-  .form-group input:focus, .form-group select:focus { border-color: #0ea5e9; }
-  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .modal-footer { padding: 14px 22px; background: #0f172a; border-top: 1px solid #334155; display: flex; gap: 10px; justify-content: flex-end; flex-shrink: 0; }
-  .modal-close { background: none; border: none; color: #64748b; font-size: 1.2rem; cursor: pointer; padding: 4px; border-radius: 4px; }
-  .modal-close:hover { color: #e2e8f0; background: #334155; }
-  .product-list-header { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin-bottom: 8px; }
-  .product-list-empty { text-align: center; padding: 12px; color: #475569; font-size: 0.82rem; background: #0f172a; border-radius: 8px; border: 1px dashed #334155; }
-  .product-item { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; }
-  .product-item.editing-item { border-color: #0ea5e9; background: #0c1e32; }
-  .product-item-info { flex: 1; min-width: 0; }
-  .product-item-code { font-size: 0.85rem; font-weight: 700; color: #38bdf8; }
-  .product-item-name { font-size: 0.78rem; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .product-item-qty { font-size: 0.75rem; color: #4ade80; font-weight: 600; white-space: nowrap; }
-  .product-item-actions { display: flex; gap: 5px; flex-shrink: 0; }
-  .product-list { display: flex; flex-direction: column; gap: 6px; }
-  .form-section { background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 14px; }
-  .form-section-title { font-size: 0.8rem; color: #38bdf8; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
-  .cancel-edit { font-size: 0.72rem; color: #64748b; cursor: pointer; margin-left: auto; }
-  .cancel-edit:hover { color: #e2e8f0; }
-  .export-info { background: #0f172a; border-radius: 8px; padding: 12px; font-size: 0.8rem; color: #94a3b8; border: 1px solid #334155; }
-  .export-info code { color: #38bdf8; font-family: monospace; font-size: 0.78rem; }
-  .toast { position: fixed; bottom: 24px; right: 24px; background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 12px 18px; font-size: 0.85rem; color: #e2e8f0; z-index: 200; display: none; align-items: center; gap: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
-  .toast.show { display: flex; animation: slideIn 0.3s ease; }
-  .toast.success { border-color: #166534; }
-  .toast.success .toast-icon { color: #4ade80; }
-  .toast.error { border-color: #7f1d1d; }
-  .toast.error .toast-icon { color: #f87171; }
-  @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-  @media (max-width: 768px) { .stats { grid-template-columns: repeat(2, 1fr); } .celda { width: 58px; height: 52px; } }
-  .celda.highlight { border-color: #f59e0b !important; box-shadow: 0 0 0 2px rgba(245,158,11,0.4); }
-  .no-results { text-align: center; padding: 48px; color: #475569; }
-  .no-results .icon { font-size: 2.5rem; margin-bottom: 10px; }
-  .section-title { font-size: 0.75rem; color: #475569; text-transform: uppercase; letter-spacing: 0.08em; padding: 0 24px 10px; font-weight: 600; }
-  .col-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-  .col-label { font-size: 0.65rem; color: #475569; text-align: center; min-width: 68px; }
-  .divider { border: none; border-top: 1px solid #334155; margin: 4px 0; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema de Picking - Bodega</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+    .header{background:#1e293b;border-bottom:2px solid #334155;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+    .header h1{font-size:1.4rem;font-weight:700;color:#f1f5f9}.header h1 span{color:#38bdf8}.header-actions{display:flex;gap:10px}
+    .btn{padding:8px 16px;border:none;border-radius:8px;cursor:pointer;font-size:.85rem;font-weight:600;transition:.2s}.btn-primary{background:#0ea5e9;color:#fff}.btn-primary:hover{background:#0284c7}.btn-success{background:#22c55e;color:#fff}.btn-success:hover{background:#16a34a}.btn-warning{background:#f59e0b;color:#fff}.btn-warning:hover{background:#d97706}.btn-danger{background:#ef4444;color:#fff}.btn-danger:hover{background:#dc2626}.btn-ghost{background:#334155;color:#94a3b8}.btn-ghost:hover{background:#475569;color:#e2e8f0}.btn-sm{padding:5px 10px;font-size:.78rem}.btn-xs{padding:3px 7px;font-size:.72rem}
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:20px 24px}.stat-card{background:#1e293b;border-radius:12px;padding:16px 20px;border:1px solid #334155}.stat-card .label{font-size:.75rem;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}.stat-card .value{font-size:1.8rem;font-weight:700}.stat-card.total .value{color:#38bdf8}.stat-card.occupied .value{color:#22c55e}.stat-card.free .value{color:#94a3b8}.stat-card.percent .value{color:#f59e0b}
+    .toolbar{padding:0 24px 16px;display:flex;gap:12px;align-items:center}.search-input{flex:1;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:9px 14px;color:#e2e8f0;font-size:.9rem;outline:none;max-width:400px}.search-input:focus,.filter-select:focus{border-color:#0ea5e9}.search-input::placeholder{color:#475569}.filter-select{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:9px 12px;color:#e2e8f0;font-size:.85rem;outline:none;cursor:pointer}.view-toggle{display:flex;background:#1e293b;border-radius:8px;overflow:hidden;border:1px solid #334155}.view-btn{padding:8px 14px;border:none;background:transparent;color:#64748b;cursor:pointer;font-size:.85rem;transition:.2s}.view-btn.active{background:#0ea5e9;color:#fff}
+    .section-title{font-size:.75rem;color:#475569;text-transform:uppercase;letter-spacing:.08em;padding:0 24px 10px;font-weight:600}.content{padding:0 24px 24px}.warehouse-map{display:flex;flex-direction:column;gap:6px}.aisle-row{background:#1e293b;border-radius:10px;border:1px solid #334155;overflow:hidden}.aisle-header{background:#0f172a;padding:8px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none}.aisle-header:hover{background:#1a2540}.aisle-label{font-size:1rem;font-weight:700;color:#38bdf8;min-width:72px}.aisle-info{font-size:.78rem;color:#64748b}.aisle-progress{flex:1;height:6px;background:#334155;border-radius:3px;overflow:hidden;max-width:200px}.aisle-progress-bar{height:100%;background:#22c55e;border-radius:3px;transition:width .3s}.aisle-pct{font-size:.75rem;color:#64748b;min-width:40px;text-align:right}.aisle-toggle{color:#475569;font-size:.9rem;margin-left:8px}.aisle-grid{padding:10px 14px 14px;display:none;flex-wrap:wrap;gap:5px}.aisle-grid.open{display:flex}
+    .cell{width:68px;height:60px;border-radius:7px;border:1.5px solid #334155;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:.15s;position:relative;font-size:.65rem;text-align:center;padding:3px;gap:1px}.cell:hover{transform:scale(1.05);z-index:2}.cell.free{background:#0f172a;color:#475569;border-color:#334155}.cell.free:hover{border-color:#0ea5e9;color:#38bdf8;background:#0c1e32}.cell.occupied{background:#052e16;border-color:#166534;color:#4ade80}.cell.occupied:hover{background:#14532d;border-color:#22c55e}.cell.multi{background:#0c1a38;border-color:#1d4ed8}.cell.multi:hover{background:#1e3a5f;border-color:#3b82f6}.location-code{font-size:.68rem;font-weight:700;color:#64748b}.cell.occupied .location-code{color:#86efac}.cell.multi .location-code{color:#93c5fd}.product-code{font-size:.62rem;font-weight:700;color:#4ade80;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60px}.cell.multi .product-code{color:#60a5fa}.product-qty{font-size:.58rem;color:#22c55e}.plus-icon{font-size:1.1rem;color:#334155}.cell.free:hover .plus-icon{color:#0ea5e9}.multi-badge{font-size:.58rem;background:#1d4ed8;color:#bfdbfe;padding:1px 5px;border-radius:99px;font-weight:700}
+    .list-table{width:100%;border-collapse:collapse;background:#1e293b;border-radius:12px;overflow:hidden;border:1px solid #334155}.list-table th{background:#0f172a;padding:10px 14px;text-align:left;font-size:.75rem;color:#64748b;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #334155}.list-table td{padding:9px 14px;font-size:.85rem;border-bottom:1px solid #1e2d40}.list-table tr:last-child td{border-bottom:none}.list-table tr:hover td{background:#243044}.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:.72rem;font-weight:600}.badge.green{background:#052e16;color:#4ade80}.badge.blue{background:#0c1a38;color:#60a5fa}.badge.gray{background:#1e293b;color:#475569;border:1px solid #334155}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(3px)}.modal-overlay.open{display:flex}.modal{background:#1e293b;border-radius:16px;border:1px solid #334155;width:520px;max-width:95vw;max-height:90vh;overflow:hidden;display:flex;flex-direction:column}.modal-header{padding:16px 22px;background:#0f172a;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #334155;flex-shrink:0}.modal-header h2{font-size:1rem;font-weight:700;color:#f1f5f9}.modal-location{font-size:.85rem;color:#38bdf8;font-weight:600;background:#0c2540;padding:4px 10px;border-radius:6px}.modal-body{padding:18px 22px;display:flex;flex-direction:column;gap:14px;overflow:auto;flex:1}.form-section{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:14px}.form-section-title{font-size:.8rem;color:#38bdf8;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px}.form-group label{display:block;font-size:.78rem;color:#94a3b8;margin-bottom:5px;font-weight:600}.form-group input,.form-group select{width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:9px 12px;color:#e2e8f0;font-size:.9rem;outline:none;transition:border .2s}.form-group input:focus,.form-group select:focus{border-color:#0ea5e9}.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.modal-footer{padding:14px 22px;background:#0f172a;border-top:1px solid #334155;display:flex;gap:10px;justify-content:flex-end;flex-shrink:0}.modal-close{background:none;border:none;color:#64748b;font-size:1.2rem;cursor:pointer;padding:4px;border-radius:4px}.modal-close:hover{color:#e2e8f0;background:#334155}.product-list-header{font-size:.75rem;color:#64748b;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:8px}.empty-product-list{text-align:center;padding:12px;color:#475569;font-size:.82rem;background:#0f172a;border-radius:8px;border:1px dashed #334155}.product-item{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px}.product-item.editing{border-color:#0ea5e9;background:#0c1e32}.product-item-info{flex:1;min-width:0}.product-item-code{font-size:.85rem;font-weight:700;color:#38bdf8}.product-item-name{font-size:.78rem;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.product-item-qty{font-size:.75rem;color:#4ade80;font-weight:600;white-space:nowrap}.product-item-actions{display:flex;gap:5px;flex-shrink:0}.product-list{display:flex;flex-direction:column;gap:6px}.export-info{background:#0f172a;border-radius:8px;padding:12px;font-size:.8rem;color:#94a3b8;border:1px solid #334155}.toast{position:fixed;bottom:24px;right:24px;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px 18px;font-size:.85rem;color:#e2e8f0;z-index:200;display:none;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.4)}.toast.show{display:flex;animation:slideIn .3s ease}.toast.success{border-color:#166534}.toast.error{border-color:#7f1d1d}@keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}.no-results{text-align:center;padding:48px;color:#475569}.no-results .icon{font-size:2.5rem;margin-bottom:10px}.divider{border:none;border-top:1px solid #334155;margin:4px 0}
+    @media(max-width:768px){.stats{grid-template-columns:repeat(2,1fr)}.cell{width:58px;height:52px}.toolbar{flex-wrap:wrap}.header{flex-direction:column;gap:12px;align-items:flex-start}}
+  </style>
 </head>
 <body>
-<div class="header">
-  <h1>📦 Sistema de <span>Picking</span> · Bodega</h1>
-  <div class="header-actions">
-    <button class="btn btn-success btn-sm" onclick="openExportModal()">⬇ Exportar a Odoo (CSV)</button>
-    <button class="btn btn-warning btn-sm" onclick="clearAll()">🗑 Limpiar todo</button>
-  </div>
-</div>
-<div class="stats" id="stats"></div>
-<div class="toolbar">
-  <input class="search-input" type="text" id="searchInput" placeholder="🔍  Buscar por código, nombre o ubicación..." oninput="onSearch()">
-  <select class="filter-select" id="filterSelect" onchange="renderMap()"><option value="all">Todos los pasillos</option></select>
-  <select class="filter-select" id="filterStatus" onchange="renderMap()">
-    <option value="all">Todas</option><option value="ocupada">Ocupadas</option><option value="libre">Libres</option>
-  </select>
-  <div class="view-toggle">
-    <button class="view-btn active" id="btnMapa" onclick="setView('mapa')">🗺 Mapa</button>
-    <button class="view-btn" id="btnLista" onclick="setView('lista')">📋 Lista</button>
-  </div>
-</div>
-<div class="section-title" id="sectionTitle">Mapa de Bodega</div>
-<div class="content" id="mainContent"></div>
-<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
-  <div class="modal">
-    <div class="modal-header">
-      <h2 id="modalTitle">Gestionar Ubicación</h2>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <span class="modal-loc" id="modalLoc">-</span>
-        <button class="modal-close" onclick="closeModalBtn()">✕</button>
-      </div>
+  <div class="header">
+    <h1>📦 Sistema de <span>Picking</span> · Bodega</h1>
+    <div class="header-actions">
+      <button class="btn btn-success btn-sm" onclick="openExportModal()">⬇ Exportar a Odoo (CSV)</button>
+      <button class="btn btn-warning btn-sm" onclick="clearAll()">🗑 Limpiar todo</button>
     </div>
-    <div class="modal-body">
-      <div>
-        <div class="product-list-header">Productos en esta ubicación</div>
-        <div id="productList"></div>
-      </div>
-      <hr class="divider">
-      <div class="form-section">
-        <div class="form-section-title">
-          <span id="formSectionTitle">➕ Agregar producto</span>
-          <span class="cancel-edit" id="cancelEditBtn" style="display:none;" onclick="cancelEdit()">✕ Cancelar edición</span>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="toolbar">
+    <input class="search-input" type="text" id="searchInput" placeholder="🔍 Buscar por código, nombre o ubicación..." oninput="onSearch()" />
+    <select class="filter-select" id="aisleFilter" onchange="renderMap()"><option value="all">Todos los pasillos</option></select>
+    <select class="filter-select" id="statusFilter" onchange="renderMap()">
+      <option value="all">Todas</option><option value="occupied">Ocupadas</option><option value="free">Libres</option>
+    </select>
+    <div class="view-toggle">
+      <button class="view-btn active" id="btnMap" onclick="setView('map')">🗺 Mapa</button>
+      <button class="view-btn" id="btnList" onclick="setView('list')">📋 Lista</button>
+    </div>
+  </div>
+
+  <div class="section-title" id="sectionTitle">Mapa de Bodega</div>
+  <div class="content" id="mainContent"></div>
+
+  <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 id="modalTitle">Gestionar Ubicación</h2>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="modal-location" id="modalLoc">-</span>
+          <button class="modal-close" onclick="closeModalBtn()">✕</button>
         </div>
-        <div style="display:flex;flex-direction:column;gap:12px;">
-          <div class="form-group"><label>Código de Producto (SKU)</label><input type="text" id="fCodigo" placeholder="Ej: ART-0042" autocomplete="off"></div>
-          <div class="form-group"><label>Nombre del Producto</label><input type="text" id="fNombre" placeholder="Ej: Tornillo hexagonal M8" autocomplete="off"></div>
+      </div>
+      <div class="modal-body">
+        <div>
+          <div class="product-list-header">Productos en esta ubicación</div>
+          <div id="productList"></div>
+        </div>
+        <div class="form-section">
+          <div class="form-section-title" id="formTitle">➕ Agregar producto</div>
           <div class="form-row">
-            <div class="form-group"><label>Cantidad</label><input type="number" id="fCantidad" placeholder="0" min="0"></div>
-            <div class="form-group"><label>Unidad</label>
-              <select id="fUnidad">
-                <option value="UN">Unidades (UN)</option><option value="KG">Kilogramos (KG)</option>
-                <option value="MT">Metros (MT)</option><option value="LT">Litros (LT)</option>
-                <option value="CJ">Caja (CJ)</option><option value="PAL">Pallet (PAL)</option>
-              </select>
-            </div>
+            <div class="form-group"><label>Código producto</label><input id="productCode" type="text" placeholder="Ej: SKU-001"></div>
+            <div class="form-group"><label>Cantidad</label><input id="productQty" type="number" min="1" placeholder="0"></div>
           </div>
-          <div class="form-group"><label>Notas (opcional)</label><input type="text" id="fNotas" placeholder="Ej: Frágil, mantener seco..."></div>
+          <div class="form-group" style="margin-top:12px"><label>Nombre / descripción</label><input id="productName" type="text" placeholder="Descripción del producto"></div>
         </div>
       </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModalBtn()">Cerrar</button>
-      <button class="btn btn-primary" id="btnAgregar" onclick="agregarProducto()">➕ Agregar</button>
-    </div>
-  </div>
-</div>
-<div class="modal-overlay" id="exportOverlay" onclick="closeExport(event)">
-  <div class="modal">
-    <div class="modal-header">
-      <h2>Exportar a Odoo (CSV)</h2>
-      <button class="modal-close" onclick="document.getElementById('exportOverlay').classList.remove('open')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="export-info">CSV compatible con Odoo Inventario.<br>Columnas: <code>Ubicación / Producto / Cantidad / Unidad / Notas</code><br>Importar desde Odoo: <em>Inventario → Productos → Importar</em>.</div>
-      <div class="form-group"><label>Bodega en Odoo (prefijo)</label><input type="text" id="odooWarehouse" value="WH/Picking"></div>
-      <div class="form-group"><label>Filtrar</label>
-        <select id="exportFilter">
-          <option value="all">Todas las ubicaciones</option>
-          <option value="ocupadas">Solo ocupadas</option>
-        </select>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="cancelEdit()" id="cancelEditBtn" style="display:none">Cancelar edición</button>
+        <button class="btn btn-primary" onclick="saveProduct()" id="saveBtn">Guardar</button>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="document.getElementById('exportOverlay').classList.remove('open')">Cancelar</button>
-      <button class="btn btn-success" onclick="exportCSV()">⬇ Descargar CSV</button>
+  </div>
+
+  <div class="modal-overlay" id="exportOverlay" onclick="closeExportModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header"><h2>Exportar a Odoo</h2><button class="modal-close" onclick="closeExportModalBtn()">✕</button></div>
+      <div class="modal-body">
+        <div class="export-info">Se generará un CSV con columnas: <b>Ubicación</b>, <b>Código</b>, <b>Nombre</b>, <b>Cantidad</b>.</div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-ghost" onclick="closeExportModalBtn()">Cancelar</button><button class="btn btn-success" onclick="exportCSV()">Descargar CSV</button></div>
     </div>
   </div>
-</div>
-<div class="toast" id="toast"><span class="toast-icon" id="toastIcon"></span><span id="toastMsg"></span></div>
-<script>
-const ESTRUCTURA=[{pasillo:'Z',colDesde:1,colHasta:3,filas:7},{pasillo:'Y',colDesde:1,colHasta:3,filas:7},{pasillo:'X',colDesde:1,colHasta:5,filas:7},{pasillo:'W',colDesde:1,colHasta:5,filas:7},{pasillo:'V',colDesde:1,colHasta:5,filas:7},{pasillo:'C',colDesde:1,colHasta:5,filas:7},{pasillo:'T',colDesde:1,colHasta:5,filas:7},{pasillo:'S',colDesde:1,colHasta:6,filas:7},{pasillo:'R',colDesde:3,colHasta:8,filas:7},{pasillo:'Q',colDesde:3,colHasta:8,filas:7},{pasillo:'P',colDesde:1,colHasta:8,filas:7},{pasillo:'O',colDesde:1,colHasta:8,filas:7},{pasillo:'N',colDesde:1,colHasta:8,filas:7},{pasillo:'M',colDesde:1,colHasta:8,filas:7}];
-function loadData(){try{return JSON.parse(localStorage.getItem('bodega_data_v2')||'{}')}catch(e){return{}}}
-function saveData(d){localStorage.setItem('bodega_data_v2',JSON.stringify(d))}
-function migrateV1(){const v1=localStorage.getItem('bodega_data');if(!v1)return;const o=JSON.parse(v1),n={};for(const k in o){const i=o[k];if(i&&i.codigo)n[k]={productos:[{codigo:i.codigo,nombre:i.nombre||'',cantidad:i.cantidad||'0',unidad:i.unidad||'UN',notas:i.notas||''}]}}saveData(n);localStorage.removeItem('bodega_data')}
-function locKey(p,c,f){return p+'-'+String(c).padStart(2,'0')+'-'+String(f).padStart(2,'0')}
-function getProductos(data,k){return(data[k]&&data[k].productos)?data[k].productos:[]}
-let currentView='mapa',selectedLoc=null,searchTerm='',openPasillos={},editingIndex=-1;
-ESTRUCTURA.forEach(p=>openPasillos[p.pasillo]=true);
-function getStats(){const data=loadData();let total=0,ocupadas=0;ESTRUCTURA.forEach(p=>{for(let c=p.colDesde;c<=p.colHasta;c++)for(let f=1;f<=p.filas;f++){total++;const k=locKey(p.pasillo,c,f);if(getProductos(data,k).length>0)ocupadas++}});return{total,ocupadas,libres:total-ocupadas,pct:total>0?Math.round(ocupadas/total*100):0}}
-function renderStats(){const s=getStats();document.getElementById('stats').innerHTML=`<div class="stat-card total"><div class="label">Total Ubicaciones</div><div class="value">${s.total}</div></div><div class="stat-card ocupadas"><div class="label">Ocupadas</div><div class="value">${s.ocupadas}</div></div><div class="stat-card libres"><div class="label">Libres</div><div class="value">${s.libres}</div></div><div class="stat-card pct"><div class="label">Ocupación</div><div class="value">${s.pct}%</div></div>`}
-function initFilterSelect(){const sel=document.getElementById('filterSelect');ESTRUCTURA.forEach(p=>{const o=document.createElement('option');o.value=p.pasillo;o.textContent='Pasillo '+p.pasillo;sel.appendChild(o)})}
-function renderMap(){const data=loadData(),fp=document.getElementById('filterSelect').value,fs=document.getElementById('filterStatus').value,search=searchTerm.toLowerCase().trim();document.getElementById('sectionTitle').textContent='Mapa de Bodega';const container=document.getElementById('mainContent');container.innerHTML='';const mapDiv=document.createElement('div');mapDiv.className='bodega-map';ESTRUCTURA.filter(p=>fp==='all'||p.pasillo===fp).forEach(p=>{let total=0,ocupadas=0;const celdas=[];for(let c=p.colDesde;c<=p.colHasta;c++)for(let f=1;f<=p.filas;f++){const k=locKey(p.pasillo,c,f),prods=getProductos(data,k);total++;if(prods.length>0)ocupadas++;celdas.push({k,c,f,prods})}const pct=total>0?Math.round(ocupadas/total*100):0;const match=celdas.filter(({prods})=>fs==='all'||(fs==='ocupada'&&prods.length>0)||(fs==='libre'&&prods.length===0)).filter(({k,prods})=>{if(!search)return true;if(k.toLowerCase().includes(search))return true;return prods.some(pr=>(pr.codigo||'').toLowerCase().includes(search)||(pr.nombre||'').toLowerCase().includes(search))});if((fs!=='all'||search)&&match.length===0)return;const row=document.createElement('div');row.className='pasillo-row';row.innerHTML=`<div class="pasillo-header" onclick="togglePasillo('${p.pasillo}')"><span class="pasillo-label">${p.pasillo}</span><span class="pasillo-info">Cols ${p.colDesde}-${p.colHasta} · ${p.filas} filas · ${ocupadas}/${total} ocupadas</span><div class="pasillo-progress"><div class="pasillo-progress-bar" style="width:${pct}%"></div></div><span class="pasillo-pct">${pct}%</span><span class="pasillo-toggle" id="toggle_${p.pasillo}">${openPasillos[p.pasillo]?'▲':'▼'}</span></div><div class="pasillo-grid ${openPasillos[p.pasillo]?'open':''}" id="grid_${p.pasillo}"></div>`;mapDiv.appendChild(row);const grid=row.querySelector('#grid_'+p.pasillo);for(let c=p.colDesde;c<=p.colHasta;c++){const cg=document.createElement('div');cg.className='col-group';const cl=document.createElement('div');cl.className='col-label';cl.textContent='Col '+c;cg.appendChild(cl);for(let f=1;f<=p.filas;f++){const k=locKey(p.pasillo,c,f),prods=getProductos(data,k),n=prods.length;const isSrch=search&&(k.toLowerCase().includes(search)||prods.some(pr=>(pr.codigo||'').toLowerCase().includes(search)||(pr.nombre||'').toLowerCase().includes(search)));const mSt=fs==='all'||(fs==='ocupada'&&n>0)||(fs==='libre'&&n===0);if(!mSt&&!search)continue;const cel=document.createElement('div');let cc=n===0?'libre':n===1?'ocupada':'multi';cel.className='celda '+cc+(isSrch?' highlight':'');let tt=k;if(n===0)tt+='
-Libre';else prods.forEach((pr,i)=>{tt+='
-'+(i+1)+'. '+pr.codigo+' – '+pr.nombre+' ('+pr.cantidad+' '+pr.unidad+')'});cel.title=tt;cel.onclick=()=>openModal(k);if(n===0)cel.innerHTML=`<div class="loc-code">${k}</div><div class="plus-icon">+</div>`;else if(n===1)cel.innerHTML=`<div class="loc-code">${k}</div><div class="prod-code">${prods[0].codigo}</div><div class="prod-qty">${prods[0].cantidad} ${prods[0].unidad}</div>`;else cel.innerHTML=`<div class="loc-code">${k}</div><div class="prod-code">${prods[0].codigo}</div><div class="multi-badge">+${n-1} más</div>`;cg.appendChild(cel)}grid.appendChild(cg)}});if(mapDiv.children.length===0)mapDiv.innerHTML='<div class="no-results"><div class="icon">🔍</div><div>No se encontraron ubicaciones</div></div>';container.appendChild(mapDiv)}
-function renderLista(){const data=loadData(),fp=document.getElementById('filterSelect').value,fs=document.getElementById('filterStatus').value,search=searchTerm.toLowerCase().trim();document.getElementById('sectionTitle').textContent='Lista de Ubicaciones';const container=document.getElementById('mainContent');let rows=[];ESTRUCTURA.forEach(p=>{if(fp!=='all'&&p.pasillo!==fp)return;for(let c=p.colDesde;c<=p.colHasta;c++)for(let f=1;f<=p.filas;f++){const k=locKey(p.pasillo,c,f),prods=getProductos(data,k),isO=prods.length>0;if(fs==='ocupada'&&!isO)continue;if(fs==='libre'&&isO)continue;if(search){const ml=k.toLowerCase().includes(search),mp=prods.some(pr=>(pr.codigo||'').toLowerCase().includes(search)||(pr.nombre||'').toLowerCase().includes(search));if(!ml&&!mp)continue}rows.push({k,prods,isO})}});if(rows.length===0){container.innerHTML='<div class="no-results"><div class="icon">🔍</div><div>No se encontraron ubicaciones</div></div>';return}const table=document.createElement('table');table.className='lista-table';table.innerHTML='<thead><tr><th>Ubicación</th><th>Estado</th><th>#</th><th>Código</th><th>Nombre</th><th>Cantidad</th><th>Unidad</th><th>Notas</th><th>Acción</th></tr></thead>';const tbody=document.createElement('tbody');rows.forEach(({k,prods,isO})=>{if(prods.length===0){const tr=document.createElement('tr');tr.innerHTML=`<td><strong style="color:#38bdf8">${k}</strong></td><td><span class="badge badge-gray">○ Libre</span></td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><button class="btn btn-ghost btn-sm" onclick='openModal("${k}")'>➕ Agregar</button></td>`;tbody.appendChild(tr)}else{const badge=prods.length>1?`<span class="badge badge-blue">● ${prods.length} productos</span>`:'<span class="badge badge-green">● Ocupada</span>';prods.forEach((prod,idx)=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${idx===0?`<strong style="color:#38bdf8">${k}</strong>`:'<span style="color:#334155;font-size:0.75rem">↳</span>'}</td><td>${idx===0?badge:''}</td><td style="color:#64748b;font-size:0.8rem">${idx+1}</td><td style="font-weight:600">${prod.codigo||'—'}</td><td>${prod.nombre||'—'}</td><td>${prod.cantidad||'—'}</td><td>${prod.unidad||'—'}</td><td style="color:#64748b;font-size:0.8rem">${prod.notas||'—'}</td><td>${idx===0?`<button class="btn btn-ghost btn-sm" onclick='openModal("${k}")'>✏ Gestionar</button>`:''}</td>`;tbody.appendChild(tr)})}});table.appendChild(tbody);container.innerHTML='';container.appendChild(table)}
-function togglePasillo(p){openPasillos[p]=!openPasillos[p];const g=document.getElementById('grid_'+p),t=document.getElementById('toggle_'+p);if(g)g.classList.toggle('open',openPasillos[p]);if(t)t.textContent=openPasillos[p]?'▲':'▼'}
-function openModal(loc){selectedLoc=loc;editingIndex=-1;document.getElementById('modalLoc').textContent=loc;document.getElementById('modalTitle').textContent='Ubicación '+loc;clearForm();renderProductList();document.getElementById('modalOverlay').classList.add('open');setTimeout(()=>document.getElementById('fCodigo').focus(),100)}
-function renderProductList(){const data=loadData(),prods=getProductos(data,selectedLoc),container=document.getElementById('productList');if(prods.length===0){container.innerHTML='<div class="product-list-empty">Sin productos asignados. Agrega el primero abajo.</div>';return}container.innerHTML='';const list=document.createElement('div');list.className='product-list';prods.forEach((prod,idx)=>{const item=document.createElement('div');item.className='product-item'+(editingIndex===idx?' editing-item':'');item.innerHTML=`<div class="product-item-info"><div class="product-item-code">${prod.codigo}</div><div class="product-item-name">${prod.nombre||'(sin nombre)'}</div>${prod.notas?`<div style="font-size:0.72rem;color:#475569">${prod.notas}</div>`:''}</div><div class="product-item-qty">${prod.cantidad} ${prod.unidad}</div><div class="product-item-actions"><button class="btn btn-ghost btn-xs" onclick="startEditProducto(${idx})" title="Editar">✏</button><button class="btn btn-danger btn-xs" onclick="eliminarProducto(${idx})" title="Eliminar">🗑</button></div>`;list.appendChild(item)});container.appendChild(list)}
-function startEditProducto(idx){const data=loadData(),prods=getProductos(data,selectedLoc),prod=prods[idx];editingIndex=idx;document.getElementById('fCodigo').value=prod.codigo||'';document.getElementById('fNombre').value=prod.nombre||'';document.getElementById('fCantidad').value=prod.cantidad||'';document.getElementById('fUnidad').value=prod.unidad||'UN';document.getElementById('fNotas').value=prod.notas||'';document.getElementById('formSectionTitle').textContent='✏ Editando producto';document.getElementById('cancelEditBtn').style.display='inline';document.getElementById('btnAgregar').textContent='💾 Actualizar';document.getElementById('fCodigo').focus();renderProductList()}
-function cancelEdit(){editingIndex=-1;clearForm();renderProductList()}
-function clearForm(){document.getElementById('fCodigo').value='';document.getElementById('fNombre').value='';document.getElementById('fCantidad').value='';document.getElementById('fUnidad').value='UN';document.getElementById('fNotas').value='';document.getElementById('formSectionTitle').textContent='➕ Agregar producto';document.getElementById('cancelEditBtn').style.display='none';document.getElementById('btnAgregar').textContent='➕ Agregar'}
-function agregarProducto(){const codigo=document.getElementById('fCodigo').value.trim(),nombre=document.getElementById('fNombre').value.trim(),cantidad=document.getElementById('fCantidad').value.trim(),unidad=document.getElementById('fUnidad').value,notas=document.getElementById('fNotas').value.trim();if(!codigo){showToast('error','⚠','El código es obligatorio');return}const data=loadData();if(!data[selectedLoc])data[selectedLoc]={productos:[]};if(editingIndex>=0){data[selectedLoc].productos[editingIndex]={codigo,nombre,cantidad:cantidad||'0',unidad,notas};showToast('success','✓','Producto actualizado en '+selectedLoc)}else{const existe=data[selectedLoc].productos.find(p=>p.codigo.toLowerCase()===codigo.toLowerCase());if(existe){showToast('error','⚠','El código '+codigo+' ya está en esta ubicación');return}data[selectedLoc].productos.push({codigo,nombre,cantidad:cantidad||'0',unidad,notas});showToast('success','✓',codigo+' agregado a '+selectedLoc)}saveData(data);editingIndex=-1;clearForm();renderProductList();renderStats();if(currentView==='mapa')renderMap();else renderLista()}
-function eliminarProducto(idx){const data=loadData(),prods=getProductos(data,selectedLoc),prod=prods[idx];if(!confirm('¿Eliminar "'+prod.codigo+'" de '+selectedLoc+'?'))return;prods.splice(idx,1);if(prods.length===0)delete data[selectedLoc];else data[selectedLoc].productos=prods;saveData(data);if(editingIndex===idx){editingIndex=-1;clearForm()}renderProductList();renderStats();if(currentView==='mapa')renderMap();else renderLista();showToast('success','✓','Producto eliminado de '+selectedLoc)}
-function closeModal(e){if(e.target===document.getElementById('modalOverlay'))closeModalBtn()}
-function closeModalBtn(){document.getElementById('modalOverlay').classList.remove('open');selectedLoc=null;editingIndex=-1}
-function onSearch(){searchTerm=document.getElementById('searchInput').value;if(currentView==='mapa')renderMap();else renderLista()}
-function setView(v){currentView=v;document.getElementById('btnMapa').classList.toggle('active',v==='mapa');document.getElementById('btnLista').classList.toggle('active',v==='lista');if(v==='mapa')renderMap();else renderLista()}
-function openExportModal(){document.getElementById('exportOverlay').classList.add('open')}
-function closeExport(e){if(e.target===document.getElementById('exportOverlay'))document.getElementById('exportOverlay').classList.remove('open')}
-function exportCSV(){const data=loadData(),warehouse=document.getElementById('odooWarehouse').value.trim()||'WH/Picking',filterExp=document.getElementById('exportFilter').value,rows=[['Ubicación Odoo','Código Ubicación','Referencia Producto','Nombre Producto','Cantidad','Unidad de Medida','Notas']];let total=0;ESTRUCTURA.forEach(p=>{for(let c=p.colDesde;c<=p.colHasta;c++)for(let f=1;f<=p.filas;f++){const k=locKey(p.pasillo,c,f),prods=getProductos(data,k);if(filterExp==='ocupadas'&&prods.length===0)continue;if(prods.length===0){rows.push([warehouse+'/'+k,k,'','','','','']);total++}else{prods.forEach(prod=>{rows.push([warehouse+'/'+k,k,prod.codigo||'',prod.nombre||'',prod.cantidad||'',prod.unidad||'',prod.notas||'']);total++})}}});const csv=rows.map(r=>r.map(cell=>'"'+String(cell).replace(/"/g,'""')+'"').join(',')).join('
-'),blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='bodega_picking_'+new Date().toISOString().slice(0,10)+'.csv';a.click();URL.revokeObjectURL(url);document.getElementById('exportOverlay').classList.remove('open');showToast('success','⬇','CSV exportado con '+total+' filas')}
-function clearAll(){if(!confirm('⚠ ¿Borrar TODOS los datos?'))return;localStorage.removeItem('bodega_data_v2');renderStats();if(currentView==='mapa')renderMap();else renderLista();showToast('success','✓','Datos eliminados')}
-let toastTimer;
-function showToast(type,icon,msg){const t=document.getElementById('toast');document.getElementById('toastIcon').textContent=icon;document.getElementById('toastMsg').textContent=msg;t.className='toast show '+type;clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2800)}
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModalBtn();document.getElementById('exportOverlay').classList.remove('open')}if(e.key==='Enter'&&document.getElementById('modalOverlay').classList.contains('open'))agregarProducto();if((e.ctrlKey||e.metaKey)&&e.key==='f'){e.preventDefault();document.getElementById('searchInput').focus()}});
-migrateV1();initFilterSelect();renderStats();renderMap();
-</script>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // Configuración real de ubicaciones según tabla entregada:
+    // Pasillo / rango de columnas / cantidad de filas.
+    const WAREHOUSE_CONFIG = {
+      aisles: ['Z','Y','X','W','V','C','T','S','R','Q','P','O','N','M'],
+      aisleConfig: {
+        Z: { colStart: 1, colEnd: 3, rows: 7 },
+        Y: { colStart: 1, colEnd: 3, rows: 7 },
+        X: { colStart: 1, colEnd: 5, rows: 7 },
+        W: { colStart: 1, colEnd: 5, rows: 7 },
+        V: { colStart: 1, colEnd: 5, rows: 7 },
+        C: { colStart: 1, colEnd: 5, rows: 7 },
+        T: { colStart: 1, colEnd: 5, rows: 7 },
+        S: { colStart: 1, colEnd: 6, rows: 7 },
+        R: { colStart: 3, colEnd: 8, rows: 7 },
+        Q: { colStart: 3, colEnd: 8, rows: 7 },
+        P: { colStart: 1, colEnd: 8, rows: 7 },
+        O: { colStart: 1, colEnd: 8, rows: 7 },
+        N: { colStart: 1, colEnd: 8, rows: 7 },
+        M: { colStart: 1, colEnd: 8, rows: 7 }
+      }
+    };
+
+    const STORAGE_KEY = 'picking_bodega_data_v2';
+    let viewMode = 'map';
+    let selectedLocation = null;
+    let editingIndex = null;
+    let openAisles = new Set(WAREHOUSE_CONFIG.aisles);
+
+    let warehouseData = loadData();
+
+    function buildLocations(){
+      const rows = [];
+      WAREHOUSE_CONFIG.aisles.forEach(aisle => {
+        const cfg = WAREHOUSE_CONFIG.aisleConfig[aisle];
+        for(let col = cfg.colStart; col <= cfg.colEnd; col++){
+          for(let row = 1; row <= cfg.rows; row++){
+            // Formato: PASILLO-COLUMNA-FILA. Ejemplo: Z-01-01, R-03-07, M-08-07.
+            const code = `${aisle}-${String(col).padStart(2,'0')}-${String(row).padStart(2,'0')}`;
+            rows.push({ location: code, aisle, column: col, row, products: [] });
+          }
+        }
+      });
+      return rows;
+    }
+
+    function loadData(){
+      try{
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+        const base = buildLocations();
+        if(!Array.isArray(saved)) return base;
+        return base.map(loc => {
+          const found = saved.find(x => x.location === loc.location);
+          return found ? { ...loc, products: Array.isArray(found.products) ? found.products : [] } : loc;
+        });
+      }catch(e){
+        return buildLocations();
+      }
+    }
+
+    function saveData(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(warehouseData)); }
+
+    function init(){
+      const select = document.getElementById('aisleFilter');
+      WAREHOUSE_CONFIG.aisles.forEach(aisle => {
+        const option = document.createElement('option');
+        option.value = aisle;
+        option.textContent = `Pasillo ${aisle}`;
+        select.appendChild(option);
+      });
+      renderStats();
+      renderMap();
+    }
+
+    function getFilteredData(){
+      const q = document.getElementById('searchInput').value.trim().toLowerCase();
+      const aisle = document.getElementById('aisleFilter').value;
+      const status = document.getElementById('statusFilter').value;
+      return warehouseData.filter(loc => {
+        const occupied = loc.products.length > 0;
+        const matchesAisle = aisle === 'all' || loc.aisle === aisle;
+        const matchesStatus = status === 'all' || (status === 'occupied' && occupied) || (status === 'free' && !occupied);
+        const matchesSearch = !q || loc.location.toLowerCase().includes(q) || loc.products.some(p => `${p.code} ${p.name}`.toLowerCase().includes(q));
+        return matchesAisle && matchesStatus && matchesSearch;
+      });
+    }
+
+    function renderStats(){
+      const total = warehouseData.length;
+      const occupied = warehouseData.filter(l => l.products.length > 0).length;
+      const free = total - occupied;
+      const percent = total ? Math.round((occupied / total) * 100) : 0;
+      document.getElementById('stats').innerHTML = `
+        <div class="stat-card total"><div class="label">Ubicaciones</div><div class="value">${total}</div></div>
+        <div class="stat-card occupied"><div class="label">Ocupadas</div><div class="value">${occupied}</div></div>
+        <div class="stat-card free"><div class="label">Libres</div><div class="value">${free}</div></div>
+        <div class="stat-card percent"><div class="label">Ocupación</div><div class="value">${percent}%</div></div>`;
+    }
+
+    function renderMap(){
+      renderStats();
+      document.getElementById('sectionTitle').textContent = viewMode === 'map' ? 'Mapa de Bodega' : 'Listado de Ubicaciones';
+      document.getElementById('btnMap').classList.toggle('active', viewMode === 'map');
+      document.getElementById('btnList').classList.toggle('active', viewMode === 'list');
+      if(viewMode === 'list') return renderList();
+
+      const data = getFilteredData();
+      const grouped = WAREHOUSE_CONFIG.aisles.map(aisle => ({ aisle, locations: data.filter(l => l.aisle === aisle) })).filter(g => g.locations.length);
+
+      if(!grouped.length){
+        document.getElementById('mainContent').innerHTML = `<div class="no-results"><div class="icon">🔎</div>No hay ubicaciones para el filtro seleccionado.</div>`;
+        return;
+      }
+
+      document.getElementById('mainContent').innerHTML = `<div class="warehouse-map">${grouped.map(group => {
+        const total = group.locations.length;
+        const occupied = group.locations.filter(l => l.products.length > 0).length;
+        const pct = total ? Math.round((occupied / total) * 100) : 0;
+        const isOpen = openAisles.has(group.aisle);
+        return `<div class="aisle-row">
+          <div class="aisle-header" onclick="toggleAisle('${group.aisle}')">
+            <div class="aisle-label">Pasillo ${group.aisle}</div>
+            <div class="aisle-info">${occupied}/${total} ocupadas</div>
+            <div class="aisle-progress"><div class="aisle-progress-bar" style="width:${pct}%"></div></div>
+            <div class="aisle-pct">${pct}%</div><div class="aisle-toggle">${isOpen ? '▾' : '▸'}</div>
+          </div>
+          <div class="aisle-grid ${isOpen ? 'open' : ''}">${group.locations.map(renderCell).join('')}</div>
+        </div>`;
+      }).join('')}</div>`;
+    }
+
+    function renderCell(loc){
+      let cls = 'free';
+      if(loc.products.length === 1) cls = 'occupied';
+      if(loc.products.length > 1) cls = 'multi';
+      const content = loc.products.length === 0
+        ? `<div class="location-code">${loc.location}</div><div class="plus-icon">＋</div>`
+        : loc.products.length === 1
+          ? `<div class="location-code">${loc.location}</div><div class="product-code">${escapeHtml(loc.products[0].code)}</div><div class="product-qty">Cant: ${loc.products[0].qty}</div>`
+          : `<div class="location-code">${loc.location}</div><div class="multi-badge">${loc.products.length} productos</div>`;
+      return `<div class="cell ${cls}" onclick="openLocation('${loc.location}')">${content}</div>`;
+    }
+
+    function renderList(){
+      const data = getFilteredData();
+      if(!data.length){ document.getElementById('mainContent').innerHTML = `<div class="no-results"><div class="icon">🔎</div>No hay ubicaciones para el filtro seleccionado.</div>`; return; }
+      const rows = data.flatMap(loc => {
+        if(!loc.products.length){
+          return [`<tr onclick="openLocation('${loc.location}')"><td>${loc.location}</td><td><span class="badge gray">Libre</span></td><td>-</td><td>-</td><td>-</td></tr>`];
+        }
+        return loc.products.map((p, i) => `<tr onclick="openLocation('${loc.location}')"><td>${i === 0 ? loc.location : ''}</td><td><span class="badge ${loc.products.length > 1 ? 'blue' : 'green'}">${loc.products.length > 1 ? 'Múltiple' : 'Ocupada'}</span></td><td>${escapeHtml(p.code)}</td><td>${escapeHtml(p.name || '-')}</td><td>${p.qty}</td></tr>`);
+      }).join('');
+      document.getElementById('mainContent').innerHTML = `<table class="list-table"><thead><tr><th>Ubicación</th><th>Estado</th><th>Código</th><th>Producto</th><th>Cantidad</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    function toggleAisle(aisle){ openAisles.has(aisle) ? openAisles.delete(aisle) : openAisles.add(aisle); renderMap(); }
+    function setView(mode){ viewMode = mode; renderMap(); }
+    function onSearch(){ renderMap(); }
+
+    function openLocation(location){
+      selectedLocation = warehouseData.find(l => l.location === location);
+      editingIndex = null;
+      document.getElementById('modalLoc').textContent = location;
+      document.getElementById('modalTitle').textContent = 'Gestionar Ubicación';
+      clearForm();
+      renderProductList();
+      document.getElementById('modalOverlay').classList.add('open');
+    }
+
+    function renderProductList(){
+      const list = document.getElementById('productList');
+      if(!selectedLocation.products.length){ list.innerHTML = `<div class="empty-product-list">Esta ubicación está libre.</div>`; return; }
+      list.innerHTML = `<div class="product-list">${selectedLocation.products.map((p,i) => `<div class="product-item ${editingIndex === i ? 'editing' : ''}">
+        <div class="product-item-info"><div class="product-item-code">${escapeHtml(p.code)}</div><div class="product-item-name">${escapeHtml(p.name || '-')}</div></div>
+        <div class="product-item-qty">Cant: ${p.qty}</div>
+        <div class="product-item-actions"><button class="btn btn-ghost btn-xs" onclick="editProduct(${i})">Editar</button><button class="btn btn-danger btn-xs" onclick="deleteProduct(${i})">Eliminar</button></div>
+      </div>`).join('')}</div>`;
+    }
+
+    function saveProduct(){
+      if(!selectedLocation) return;
+      const code = document.getElementById('productCode').value.trim();
+      const name = document.getElementById('productName').value.trim();
+      const qty = Number(document.getElementById('productQty').value);
+      if(!code || !qty || qty <= 0){ showToast('Debe ingresar código y cantidad válida.', 'error'); return; }
+      const item = { code, name, qty };
+      if(editingIndex !== null) selectedLocation.products[editingIndex] = item;
+      else selectedLocation.products.push(item);
+      saveData(); renderStats(); renderMap(); renderProductList(); clearForm(); showToast('Ubicación actualizada.', 'success');
+    }
+
+    function editProduct(index){
+      editingIndex = index;
+      const p = selectedLocation.products[index];
+      document.getElementById('productCode').value = p.code;
+      document.getElementById('productName').value = p.name || '';
+      document.getElementById('productQty').value = p.qty;
+      document.getElementById('formTitle').textContent = '✏ Editar producto';
+      document.getElementById('saveBtn').textContent = 'Actualizar';
+      document.getElementById('cancelEditBtn').style.display = 'inline-block';
+      renderProductList();
+    }
+
+    function deleteProduct(index){
+      selectedLocation.products.splice(index,1);
+      saveData(); renderStats(); renderMap(); renderProductList(); clearForm(); showToast('Producto eliminado.', 'success');
+    }
+
+    function cancelEdit(){ clearForm(); renderProductList(); }
+    function clearForm(){
+      editingIndex = null;
+      document.getElementById('productCode').value = '';
+      document.getElementById('productName').value = '';
+      document.getElementById('productQty').value = '';
+      document.getElementById('formTitle').textContent = '➕ Agregar producto';
+      document.getElementById('saveBtn').textContent = 'Guardar';
+      document.getElementById('cancelEditBtn').style.display = 'none';
+    }
+
+    function closeModal(e){ if(e.target.id === 'modalOverlay') closeModalBtn(); }
+    function closeModalBtn(){ document.getElementById('modalOverlay').classList.remove('open'); selectedLocation = null; clearForm(); }
+    function openExportModal(){ document.getElementById('exportOverlay').classList.add('open'); }
+    function closeExportModal(e){ if(e.target.id === 'exportOverlay') closeExportModalBtn(); }
+    function closeExportModalBtn(){ document.getElementById('exportOverlay').classList.remove('open'); }
+
+    function exportCSV(){
+      const rows = [['Ubicacion','Codigo','Nombre','Cantidad']];
+      warehouseData.forEach(loc => loc.products.forEach(p => rows.push([loc.location,p.code,p.name || '',p.qty])));
+      const csv = rows.map(r => r.map(v => `"${String(v).replaceAll('"','""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'ubicaciones_odoo.csv'; a.click(); URL.revokeObjectURL(url);
+      closeExportModalBtn(); showToast('CSV exportado.', 'success');
+    }
+
+    function clearAll(){
+      if(!confirm('¿Seguro que quieres limpiar todos los productos guardados?')) return;
+      warehouseData.forEach(l => l.products = []);
+      saveData(); renderStats(); renderMap(); showToast('Bodega limpiada.', 'success');
+    }
+
+    function showToast(msg, type='success'){
+      const toast = document.getElementById('toast'); toast.textContent = msg; toast.className = `toast ${type} show`;
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    function escapeHtml(value){
+      return String(value).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    }
+
+    init();
+  </script>
 </body>
 </html>
