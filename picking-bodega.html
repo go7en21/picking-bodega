@@ -91,26 +91,28 @@
     // Configuración real de ubicaciones según tabla entregada:
     // Pasillo / rango de columnas / cantidad de filas.
     const WAREHOUSE_CONFIG = {
-      aisles: ['Z','Y','X','W','V','C','T','S','R','Q','P','O','N','M'],
+      // Orden alfabético descendente desde Z, saltando la letra T.
+      // Se reemplaza C por U y, para mantener 14 pasillos, se agrega L al final.
+      aisles: ['Z','Y','X','W','V','U','S','R','Q','P','O','N','M','L'],
       aisleConfig: {
         Z: { colStart: 1, colEnd: 3, rows: 7 },
         Y: { colStart: 1, colEnd: 3, rows: 7 },
         X: { colStart: 1, colEnd: 5, rows: 7 },
         W: { colStart: 1, colEnd: 5, rows: 7 },
         V: { colStart: 1, colEnd: 5, rows: 7 },
-        C: { colStart: 1, colEnd: 5, rows: 7 },
-        T: { colStart: 1, colEnd: 5, rows: 7 },
-        S: { colStart: 1, colEnd: 6, rows: 7 },
-        R: { colStart: 3, colEnd: 8, rows: 7 },
+        U: { colStart: 1, colEnd: 5, rows: 7 },
+        S: { colStart: 1, colEnd: 5, rows: 7 },
+        R: { colStart: 1, colEnd: 6, rows: 7 },
         Q: { colStart: 3, colEnd: 8, rows: 7 },
-        P: { colStart: 1, colEnd: 8, rows: 7 },
+        P: { colStart: 3, colEnd: 8, rows: 7 },
         O: { colStart: 1, colEnd: 8, rows: 7 },
         N: { colStart: 1, colEnd: 8, rows: 7 },
-        M: { colStart: 1, colEnd: 8, rows: 7 }
+        M: { colStart: 1, colEnd: 8, rows: 7 },
+        L: { colStart: 1, colEnd: 8, rows: 7 }
       }
     };
 
-    const STORAGE_KEY = 'picking_bodega_data_v2';
+    const STORAGE_KEY = 'picking_bodega_data_v3_alfabetico_sin_t';
     let viewMode = 'map';
     let selectedLocation = null;
     let editingIndex = null;
